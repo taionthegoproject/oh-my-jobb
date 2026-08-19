@@ -1,0 +1,1112 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Oh my jobb</title>
+<link rel="icon" href="data:," />
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body style="margin:0;">
+<div id="root"></div>
+<script type="text/babel" data-type="module" data-presets="react">
+const { useState, useMemo, useRef, useEffect } = React;
+
+/* =========================================================================
+   OH MY JOBB — Team Work Journal
+   Design tokens
+   Ink: #17132A (near-black plum)   Paper: #FBF7EF (warm paper)
+   Primary accent: #6D4CFF (electric violet)  Pop accent: #FF4F81 (hot coral)
+   Job-type colors come from the brief itself — that IS the signature system.
+   Display face: Space Grotesk / Body: Inter / Data-mono: IBM Plex Mono
+   ========================================================================= */
+
+const FONT_IMPORT = `@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');`;
+
+const JOB_TYPES = [
+  { id: "campaign", label: "Campaign", emoji: "🟢", color: "#1E9E62", bg: "#DFF6E9" },
+  { id: "content", label: "Content", emoji: "🟣", color: "#8B3FE0", bg: "#F1E6FE" },
+  { id: "ecommerce", label: "E-Commerce", emoji: "🟡", color: "#B8860B", bg: "#FBF0CE" },
+  { id: "analytics", label: "Data / Analytics", emoji: "🔵", color: "#1D63D8", bg: "#DCE9FE" },
+  { id: "creative", label: "Creative", emoji: "🩷", color: "#D6247F", bg: "#FCE1EE" },
+  { id: "meeting", label: "Meeting", emoji: "🟠", color: "#D9660F", bg: "#FCE6D3" },
+  { id: "problem", label: "Problem Solving", emoji: "🔴", color: "#D22B2B", bg: "#FBDEDE" },
+  { id: "other", label: "Other", emoji: "⚪", color: "#6B6B78", bg: "#EAE8F0" },
+];
+const jt = (id) => JOB_TYPES.find((j) => j.id === id) || JOB_TYPES[JOB_TYPES.length - 1];
+
+const STATUSES = [
+  { id: "todo", label: "To do", color: "#8B8B99" },
+  { id: "doing", label: "Doing", color: "#D9660F" },
+  { id: "done", label: "Done", color: "#1E9E62" },
+];
+const st = (id) => STATUSES.find((s) => s.id === id) || STATUSES[0];
+
+const MEMBERS = [
+  { id: "tai", name: "Tai", color: "#6D4CFF" },
+  { id: "ploy", name: "Ploy", color: "#D6247F" },
+  { id: "nan", name: "Nan", color: "#1D63D8" },
+  { id: "now", name: "Now", color: "#D9660F" },
+  { id: "bank", name: "Bank", color: "#1E9E62" },
+  { id: "mind", name: "Mind", color: "#8B3FE0" },
+  { id: "gap", name: "Gap", color: "#B8860B" },
+  { id: "praew", name: "Praew", color: "#D22B2B" },
+  { id: "ohm", name: "Ohm", color: "#0E9BA0" },
+  { id: "fah", name: "Fah", color: "#C2469A" },
+  { id: "tar", name: "Tar", color: "#4C6D4C" },
+  { id: "bee", name: "Bee", color: "#A6541F" },
+];
+
+const PROJECTS = [
+  { id: "lazada88", name: "Lazada 8.8 Mega Campaign" },
+  { id: "onlineexcl", name: "Online Exclusive" },
+  { id: "backtoschool", name: "Back to School" },
+  { id: "aiscareplus", name: "AIS Care+" },
+  { id: "contentaug", name: "Content Plan August" },
+  { id: "shopee88", name: "Shopee 8.8" },
+  { id: "webrefresh", name: "Website Refresh" },
+  { id: "influencerq3", name: "Influencer Collab Q3" },
+  { id: "datadeepdive", name: "Customer Data Deep-dive" },
+  { id: "tiktokshop", name: "TikTok Shop Launch" },
+];
+
+const TITLE_POOL = {
+  campaign: ["Set up Lazada campaign price", "Launch Shopee 8.8 banner", "Brief campaign to media agency", "QA campaign landing page", "Schedule campaign push notification", "Review campaign budget split"],
+  content: ["Write product description copy", "Draft social caption pack", "Plan content calendar", "Edit blog article", "Proofread newsletter draft", "Localize campaign copy to Thai"],
+  ecommerce: ["Update product price on Lazada", "Fix product listing images", "Sync stock across marketplaces", "Update Shopee product variants", "Check marketplace order issue", "Update promotion voucher code"],
+  analytics: ["Analyze weekly sales performance", "Build campaign performance report", "Pull GA4 traffic numbers", "Compare CTR across channels", "Prepare monthly KPI summary", "Audit conversion funnel drop-off"],
+  creative: ["Design campaign key visual", "Create Instagram story set", "Design product banner", "Retouch product photos", "Design email header", "Create motion teaser cut"],
+  meeting: ["Weekly team sync", "Meeting with marketplace account manager", "Brief creative agency", "Sprint planning huddle", "Client review call", "Cross-team coordination meeting"],
+  problem: ["Fix broken checkout link", "Resolve pricing mismatch issue", "Troubleshoot tracking pixel", "Handle customer complaint escalation", "Fix banner rendering bug", "Investigate order delay"],
+  other: ["Update internal wiki", "File expense report", "Onboard new team tool", "General admin task", "Prep management deck", "Tidy shared drive folder"],
+};
+
+const TOAST_MESSAGES = ["JOBB ADDED! ✨", "Another one bites the dust. 😎", "That's a lot of jobb.", "Logged. Busy but make it cute.", "Survived another one. 🫡"];
+
+/* ---------------------------- mock data ---------------------------- */
+function pad(n) { return String(n).padStart(2, "0"); }
+function toISO(d) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
+function rand(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function weighted(pairs) {
+  const total = pairs.reduce((s, p) => s + p[1], 0);
+  let r = Math.random() * total;
+  for (const [v, w] of pairs) { if (r < w) return v; r -= w; }
+  return pairs[0][0];
+}
+
+function generateData() {
+  const today = new Date(2026, 7, 12); // Aug 12 2026
+  const start = new Date(2026, 6, 1); // Jul 1 2026
+  const jobs = [];
+  let id = 1;
+  const typeWeights = [
+    ["campaign", 15], ["content", 20], ["ecommerce", 26], ["analytics", 12],
+    ["creative", 15], ["meeting", 9], ["problem", 8], ["other", 9],
+  ];
+  for (let d = new Date(start); d <= today; d.setDate(d.getDate() + 1)) {
+    const day = new Date(d);
+    const dow = day.getDay();
+    const isWeekend = dow === 0 || dow === 6;
+    const base = isWeekend ? weighted([[0, 6], [1, 3], [2, 1]]) : weighted([[6, 2], [8, 4], [10, 5], [13, 3], [16, 2]]);
+    for (let i = 0; i < base; i++) {
+      const type = weighted(typeWeights);
+      const member = rand(MEMBERS);
+      const project = Math.random() < 0.72 ? rand(PROJECTS) : null;
+      const isToday = toISO(day) === toISO(today);
+      const isRecent = (today - day) / 86400000 <= 2;
+      const status = isToday ? weighted([["todo", 3], ["doing", 5], ["done", 4]])
+        : isRecent ? weighted([["doing", 3], ["done", 7]])
+        : "done";
+      jobs.push({
+        id: id++,
+        title: rand(TITLE_POOL[type]),
+        description: "",
+        owner: member.id,
+        date: toISO(day),
+        jobType: type,
+        project: project ? project.id : null,
+        status,
+        note: "",
+        createdAt: toISO(day),
+      });
+    }
+  }
+  return jobs;
+}
+
+/* ---------------------------- small UI atoms ---------------------------- */
+function Sticker({ type, size = "sm" }) {
+  const T = jt(type);
+  const pad = size === "lg" ? "6px 12px" : "3px 9px";
+  const fs = size === "lg" ? 14 : 12;
+  return (
+    <span style={{ background: T.bg, color: T.color, padding: pad, fontSize: fs, borderRadius: 999, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 5, whiteSpace: "nowrap", border: `1px solid ${T.color}22` }}>
+      <span>{T.emoji}</span>{T.label}
+    </span>
+  );
+}
+function StatusDot({ status }) {
+  const S = st(status);
+  return <span style={{ width: 7, height: 7, borderRadius: 999, background: S.color, display: "inline-block" }} />;
+}
+function Avatar({ member, size = 34 }) {
+  const initials = member.name.slice(0, 2).toUpperCase();
+  return (
+    <div style={{ width: size, height: size, borderRadius: 999, background: member.color, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: size * 0.36, flexShrink: 0 }}>
+      {initials}
+    </div>
+  );
+}
+function Card({ children, style, onClick, className }) {
+  return (
+    <div onClick={onClick} className={className} style={{ background: "#fff", border: "1px solid #ECE7F5", borderRadius: 18, ...style }}>
+      {children}
+    </div>
+  );
+}
+function SectionTitle({ eyebrow, title, sub }) {
+  return (
+    <div style={{ marginBottom: 18 }}>
+      {eyebrow && <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, letterSpacing: 1.5, color: "#6D4CFF", textTransform: "uppercase", marginBottom: 6, fontWeight: 600 }}>{eyebrow}</div>}
+      <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 26, fontWeight: 700, color: "#17132A" }}>{title}</div>
+      {sub && <div style={{ color: "#726F82", fontSize: 14, marginTop: 4 }}>{sub}</div>}
+    </div>
+  );
+}
+function Donut({ segments, size = 120, thickness = 16 }) {
+  const total = segments.reduce((s, x) => s + x.value, 0) || 1;
+  let acc = 0;
+  const stops = segments.map((s) => {
+    const pct = (s.value / total) * 100;
+    const str = `${s.color} ${acc}% ${acc + pct}%`;
+    acc += pct;
+    return str;
+  }).join(", ");
+  return (
+    <div style={{ width: size, height: size, borderRadius: "50%", background: `conic-gradient(${stops})`, position: "relative", flexShrink: 0 }}>
+      <div style={{ position: "absolute", inset: thickness, borderRadius: "50%", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column" }}>
+        <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontWeight: 600, fontSize: size * 0.16, color: "#17132A" }}>{total}</div>
+        <div style={{ fontSize: size * 0.08, color: "#9A97A8" }}>jobs</div>
+      </div>
+    </div>
+  );
+}
+function Bar({ label, value, max, color }) {
+  const pct = Math.max(3, (value / max) * 100);
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+      <div style={{ width: 140, fontSize: 13, color: "#4A4759", flexShrink: 0 }}>{label}</div>
+      <div style={{ flex: 1, background: "#F2EFF9", borderRadius: 8, height: 14, overflow: "hidden" }}>
+        <div style={{ width: `${pct}%`, height: "100%", background: color, borderRadius: 8, transition: "width .4s ease" }} />
+      </div>
+      <div style={{ width: 36, textAlign: "right", fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, color: "#17132A", flexShrink: 0 }}>{value}</div>
+    </div>
+  );
+}
+
+/* ---------------------------- Nav ---------------------------- */
+const NAV = [
+  { id: "home", label: "Home", icon: "🏠" },
+  { id: "myjobs", label: "My Jobs", icon: "💼" },
+  { id: "team", label: "Team", icon: "👥" },
+  { id: "calendar", label: "Calendar", icon: "📅" },
+  { id: "projects", label: "Projects", icon: "📁" },
+  { id: "recap", label: "Monthly Recap", icon: "✨" },
+  { id: "analytics", label: "Analytics", icon: "📊" },
+  { id: "achievements", label: "Achievements", icon: "🏆" },
+];
+
+function Sidebar({ view, setView }) {
+  return (
+    <div style={{ width: 220, flexShrink: 0, background: "#17132A", color: "#fff", display: "flex", flexDirection: "column", padding: "22px 14px" }}>
+      <div style={{ padding: "0 10px 22px 10px" }}>
+        <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 20, display: "flex", alignItems: "center", gap: 6 }}>
+          Oh my <span style={{ background: "linear-gradient(90deg,#6D4CFF,#FF4F81)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>jobb</span>
+        </div>
+        <div style={{ fontSize: 11.5, color: "#9A97C0", marginTop: 3 }}>Look what we've been doing.</div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        {NAV.map((n) => {
+          const active = view === n.id;
+          return (
+            <button key={n.id} onClick={() => setView(n.id)} style={{
+              display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 11,
+              background: active ? "rgba(109,76,255,0.28)" : "transparent", color: active ? "#fff" : "#B8B5D1",
+              border: "none", cursor: "pointer", fontSize: 13.5, fontWeight: active ? 600 : 500, textAlign: "left", fontFamily: "'Inter',sans-serif",
+            }}>
+              <span style={{ fontSize: 14 }}>{n.icon}</span> {n.label}
+            </button>
+          );
+        })}
+      </div>
+      <div style={{ marginTop: "auto", padding: "12px 12px 0", borderTop: "1px solid #2C2745", display: "flex", alignItems: "center", gap: 8 }}>
+        <Avatar member={MEMBERS[0]} size={28} />
+        <div style={{ fontSize: 12.5, color: "#C9C6E0" }}>Tai · Marketing</div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------- Topbar / Search ---------------------------- */
+function Topbar({ jobs, onAdd, onSearchNav }) {
+  const [q, setQ] = useState("");
+  const results = useMemo(() => {
+    if (!q.trim()) return { jobs: [], members: [], projects: [] };
+    const s = q.toLowerCase();
+    return {
+      jobs: jobs.filter((j) => j.title.toLowerCase().includes(s)).slice(0, 4),
+      members: MEMBERS.filter((m) => m.name.toLowerCase().includes(s)).slice(0, 3),
+      projects: PROJECTS.filter((p) => p.name.toLowerCase().includes(s)).slice(0, 3),
+    };
+  }, [q, jobs]);
+  const showDrop = q.trim().length > 0;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "16px 28px", borderBottom: "1px solid #ECE7F5", background: "#FBF7EF", position: "relative" }}>
+      <div style={{ position: "relative", flex: 1, maxWidth: 420 }}>
+        <span style={{ position: "absolute", left: 12, top: 9, color: "#9A97A8", fontSize: 13 }}>🔍</span>
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search jobs, people, projects…"
+          style={{ width: "100%", padding: "9px 12px 9px 34px", borderRadius: 11, border: "1px solid #E4DFF0", fontSize: 13.5, outline: "none", fontFamily: "'Inter',sans-serif", background: "#fff" }} />
+        {showDrop && (
+          <div style={{ position: "absolute", top: 42, left: 0, right: 0, background: "#fff", border: "1px solid #ECE7F5", borderRadius: 14, boxShadow: "0 12px 30px rgba(23,19,42,0.12)", padding: 10, zIndex: 30, maxHeight: 320, overflowY: "auto" }}>
+            {results.jobs.length === 0 && results.members.length === 0 && results.projects.length === 0 && (
+              <div style={{ fontSize: 13, color: "#9A97A8", padding: 8 }}>No matches yet.</div>
+            )}
+            {results.members.length > 0 && <div style={{ fontSize: 10.5, color: "#9A97A8", textTransform: "uppercase", letterSpacing: 1, padding: "4px 8px", fontWeight: 600 }}>People</div>}
+            {results.members.map((m) => (
+              <div key={m.id} onClick={() => { onSearchNav("member", m.id); setQ(""); }} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 8, cursor: "pointer" }}>
+                <Avatar member={m} size={22} /><span style={{ fontSize: 13.5 }}>{m.name}</span>
+              </div>
+            ))}
+            {results.projects.length > 0 && <div style={{ fontSize: 10.5, color: "#9A97A8", textTransform: "uppercase", letterSpacing: 1, padding: "4px 8px", fontWeight: 600 }}>Projects</div>}
+            {results.projects.map((p) => (
+              <div key={p.id} onClick={() => { onSearchNav("project", p.id); setQ(""); }} style={{ padding: "6px 8px", borderRadius: 8, cursor: "pointer", fontSize: 13.5 }}>{p.name}</div>
+            ))}
+            {results.jobs.length > 0 && <div style={{ fontSize: 10.5, color: "#9A97A8", textTransform: "uppercase", letterSpacing: 1, padding: "4px 8px", fontWeight: 600 }}>Jobs</div>}
+            {results.jobs.map((j) => (
+              <div key={j.id} style={{ padding: "6px 8px", borderRadius: 8, fontSize: 13.5, display: "flex", justifyContent: "space-between", gap: 8 }}>
+                <span>{j.title}</span><Sticker type={j.jobType} />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <div style={{ flex: 1 }} />
+      <button onClick={onAdd} style={{ display: "flex", alignItems: "center", gap: 6, background: "#6D4CFF", color: "#fff", border: "none", padding: "10px 16px", borderRadius: 11, fontWeight: 600, fontSize: 13.5, cursor: "pointer", fontFamily: "'Inter',sans-serif" }}>
+        ➕ Add Job
+      </button>
+    </div>
+  );
+}
+
+/* ---------------------------- Add / Edit Job Modal ---------------------------- */
+function JobModal({ initial, onClose, onSave, onDelete }) {
+  const [title, setTitle] = useState(initial?.title || "");
+  const [jobType, setJobType] = useState(initial?.jobType || "campaign");
+  const [project, setProject] = useState(initial?.project || "");
+  const [date, setDate] = useState(initial?.date || "2026-08-12");
+  const [status, setStatus] = useState(initial?.status || "todo");
+  const [note, setNote] = useState(initial?.note || "");
+  const [owner, setOwner] = useState(initial?.owner || "tai");
+  const isEdit = !!initial;
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(23,19,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: 460, maxWidth: "92vw", background: "#fff", borderRadius: 22, padding: 26, maxHeight: "88vh", overflowY: "auto" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+          <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 19 }}>{isEdit ? "Edit jobb" : "What did you do?"}</div>
+          <button onClick={onClose} style={{ border: "none", background: "#F2EFF9", borderRadius: 999, width: 30, height: 30, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>✕</button>
+        </div>
+
+        <label style={lbl}>What did you do?</label>
+        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Update Lazada campaign price" style={inp} />
+
+        <label style={lbl}>Job type</label>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
+          {JOB_TYPES.map((t) => (
+            <div key={t.id} onClick={() => setJobType(t.id)} style={{ cursor: "pointer", opacity: jobType === t.id ? 1 : 0.45, transform: jobType === t.id ? "scale(1.04)" : "none" }}>
+              <Sticker type={t.id} />
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display: "flex", gap: 10 }}>
+          <div style={{ flex: 1 }}>
+            <label style={lbl}>Project</label>
+            <select value={project} onChange={(e) => setProject(e.target.value)} style={inp}>
+              <option value="">No project</option>
+              {PROJECTS.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={lbl}>Who</label>
+            <select value={owner} onChange={(e) => setOwner(e.target.value)} style={inp}>
+              {MEMBERS.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 10 }}>
+          <div style={{ flex: 1 }}>
+            <label style={lbl}>Date</label>
+            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={inp} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={lbl}>Status</label>
+            <select value={status} onChange={(e) => setStatus(e.target.value)} style={inp}>
+              {STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <label style={lbl}>Note (optional)</label>
+        <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} style={{ ...inp, resize: "none" }} />
+
+        <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
+          {isEdit && (
+            <button onClick={() => onDelete(initial.id)} style={{ ...btnGhost, color: "#D22B2B", borderColor: "#F5D2D2" }}>
+              🗑️ Delete
+            </button>
+          )}
+          <div style={{ flex: 1 }} />
+          <button onClick={onClose} style={btnGhost}>Cancel</button>
+          <button
+            disabled={!title.trim()}
+            onClick={() => onSave({ ...(initial || {}), title, jobType, project: project || null, date, status, note, owner })}
+            style={{ ...btnPrimary, opacity: title.trim() ? 1 : 0.5 }}>
+            {isEdit ? "Save changes" : "Add jobb"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+const lbl = { display: "block", fontSize: 11.5, fontWeight: 600, color: "#726F82", textTransform: "uppercase", letterSpacing: 0.6, margin: "12px 0 5px" };
+const inp = { width: "100%", padding: "9px 11px", borderRadius: 10, border: "1px solid #E4DFF0", fontSize: 13.5, outline: "none", fontFamily: "'Inter',sans-serif", boxSizing: "border-box", background: "#FBFAFE" };
+const btnPrimary = { background: "#6D4CFF", color: "#fff", border: "none", padding: "10px 18px", borderRadius: 11, fontWeight: 600, fontSize: 13.5, cursor: "pointer" };
+const btnGhost = { display: "flex", alignItems: "center", gap: 6, background: "#fff", color: "#17132A", border: "1px solid #E4DFF0", padding: "10px 16px", borderRadius: 11, fontWeight: 600, fontSize: 13.5, cursor: "pointer" };
+
+/* ---------------------------- Toast ---------------------------- */
+function Toast({ text }) {
+  if (!text) return null;
+  return (
+    <div style={{ position: "fixed", bottom: 26, left: "50%", transform: "translateX(-50%)", background: "#17132A", color: "#fff", padding: "12px 22px", borderRadius: 999, fontSize: 14, fontWeight: 600, zIndex: 200, boxShadow: "0 10px 30px rgba(0,0,0,0.25)", fontFamily: "'Space Grotesk',sans-serif" }}>
+      {text}
+    </div>
+  );
+}
+
+/* ---------------------------- HOME ---------------------------- */
+function HomeView({ jobs, openMember, openProject, todayISO }) {
+  const todayJobs = jobs.filter((j) => j.date === todayISO);
+  const activeProjectIds = [...new Set(jobs.filter((j) => j.project).map((j) => j.project))];
+  const recent = [...jobs].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 6);
+  const hour = 14; // static "afternoon" greeting feel
+  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  const weekBanners = jobs.filter((j) => j.jobType === "creative" && j.date >= "2026-08-05").length;
+
+  return (
+    <div>
+      <div style={{ background: "linear-gradient(120deg,#17132A,#3B2C79)", borderRadius: 24, padding: "30px 32px", color: "#fff", marginBottom: 24, position: "relative", overflow: "hidden" }}>
+        <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 26, fontWeight: 700 }}>{greeting}, team 👋</div>
+        <div style={{ color: "#C9C6E0", marginTop: 4, fontSize: 14.5 }}>What are we cooking today?</div>
+        <div style={{ display: "flex", gap: 28, marginTop: 22, flexWrap: "wrap" }}>
+          <div>
+            <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 30, fontWeight: 600 }}>{todayJobs.length}</div>
+            <div style={{ fontSize: 12, color: "#B8B5D1" }}>jobs today</div>
+          </div>
+          <div>
+            <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 30, fontWeight: 600 }}>{activeProjectIds.length}</div>
+            <div style={{ fontSize: 12, color: "#B8B5D1" }}>projects in motion</div>
+          </div>
+          <div>
+            <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 30, fontWeight: 600 }}>{MEMBERS.length}</div>
+            <div style={{ fontSize: 12, color: "#B8B5D1" }}>team members working</div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 20 }}>
+        <Card style={{ padding: 22 }}>
+          <SectionTitle eyebrow="Today" title="Today's jobs" />
+          {todayJobs.length === 0 && <div style={{ color: "#9A97A8", fontSize: 13.5 }}>Nothing logged yet — first one of the day?</div>}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {todayJobs.slice(0, 8).map((j) => {
+              const m = MEMBERS.find((x) => x.id === j.owner);
+              return (
+                <div key={j.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 12, background: "#FBF7EF" }}>
+                  <Avatar member={m} size={26} />
+                  <div style={{ flex: 1, fontSize: 13.5 }}>{j.title}</div>
+                  <Sticker type={j.jobType} />
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+
+        <Card style={{ padding: 22 }}>
+          <SectionTitle eyebrow="Fun fact" title="Someone please stop us." />
+          <div style={{ fontSize: 14, color: "#4A4759", lineHeight: 1.6 }}>
+            We created <b>{weekBanners}</b> creative pieces this week alone. At this rate we'll need a bigger Google Drive. 😂
+          </div>
+          <div style={{ marginTop: 16, display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {activeProjectIds.slice(0, 4).map((pid) => {
+              const p = PROJECTS.find((x) => x.id === pid);
+              return <div key={pid} onClick={() => openProject(pid)} style={{ cursor: "pointer", fontSize: 12.5, padding: "6px 10px", borderRadius: 999, background: "#F2EFF9", color: "#6D4CFF", fontWeight: 600 }}>{p.name}</div>;
+            })}
+          </div>
+        </Card>
+      </div>
+
+      <div style={{ marginTop: 20 }}>
+        <SectionTitle eyebrow="Fresh" title="Recent activity" />
+        <Card style={{ padding: 8 }}>
+          {recent.map((j) => {
+            const m = MEMBERS.find((x) => x.id === j.owner);
+            return (
+              <div key={j.id} onClick={() => openMember(j.owner)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderBottom: "1px solid #F5F2FB", cursor: "pointer" }}>
+                <Avatar member={m} size={28} />
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontWeight: 600, fontSize: 13.5 }}>{m.name}</span>
+                  <span style={{ fontSize: 13.5, color: "#726F82" }}> logged “{j.title}”</span>
+                </div>
+                <Sticker type={j.jobType} />
+                <div style={{ fontSize: 12, color: "#9A97A8", width: 74, textAlign: "right" }}>{j.date.slice(5)}</div>
+              </div>
+            );
+          })}
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------- MY JOBS ---------------------------- */
+function MyJobsView({ jobs, openJob, todayISO }) {
+  const [range, setRange] = useState("week");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const mine = jobs.filter((j) => j.owner === "tai");
+
+  const weekAgo = new Date(2026, 7, 5);
+  const monthAgo = new Date(2026, 7, 1);
+  const filtered = mine.filter((j) => {
+    const d = new Date(j.date);
+    if (range === "today" && j.date !== todayISO) return false;
+    if (range === "week" && d < weekAgo) return false;
+    if (range === "month" && d < monthAgo) return false;
+    if (typeFilter !== "all" && j.jobType !== typeFilter) return false;
+    if (statusFilter !== "all" && j.status !== statusFilter) return false;
+    return true;
+  }).sort((a, b) => (a.date < b.date ? 1 : -1));
+
+  const doneCount = mine.filter((j) => j.status === "done").length;
+  const doingCount = mine.filter((j) => j.status === "doing").length;
+
+  return (
+    <div>
+      <SectionTitle eyebrow="Just you" title="My Jobs" sub={`${mine.length} logged total · ${doneCount} done · ${doingCount} in progress`} />
+      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+        {["today", "week", "month", "all"].map((r) => (
+          <button key={r} onClick={() => setRange(r)} style={{ padding: "7px 14px", borderRadius: 999, border: "1px solid #E4DFF0", background: range === r ? "#17132A" : "#fff", color: range === r ? "#fff" : "#4A4759", fontSize: 12.5, fontWeight: 600, cursor: "pointer", textTransform: "capitalize" }}>{r === "today" ? "Today" : `This ${r}`}</button>
+        ))}
+        <div style={{ width: 1, background: "#E4DFF0", margin: "0 4px" }} />
+        <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} style={{ ...inp, width: "auto", padding: "7px 10px" }}>
+          <option value="all">All job types</option>
+          {JOB_TYPES.map((t) => <option key={t.id} value={t.id}>{t.emoji} {t.label}</option>)}
+        </select>
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ ...inp, width: "auto", padding: "7px 10px" }}>
+          <option value="all">All statuses</option>
+          {STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+        </select>
+      </div>
+
+      <Card style={{ padding: 6 }}>
+        {filtered.length === 0 && <div style={{ padding: 24, color: "#9A97A8", fontSize: 13.5, textAlign: "center" }}>No jobs in this view. Go add one!</div>}
+        {filtered.map((j) => {
+          const p = PROJECTS.find((x) => x.id === j.project);
+          return (
+            <div key={j.id} onClick={() => openJob(j)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderBottom: "1px solid #F5F2FB", cursor: "pointer" }}>
+              <StatusDot status={j.status} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 500 }}>{j.title}</div>
+                {p && <div style={{ fontSize: 11.5, color: "#9A97A8", marginTop: 2 }}>{p.name}</div>}
+              </div>
+              <Sticker type={j.jobType} />
+              <div style={{ fontSize: 12, color: "#9A97A8", width: 70, textAlign: "right" }}>{j.date.slice(5)}</div>
+            </div>
+          );
+        })}
+      </Card>
+    </div>
+  );
+}
+
+/* ---------------------------- TEAM ---------------------------- */
+function TeamView({ jobs, openMember }) {
+  const cards = MEMBERS.map((m) => {
+    const mine = jobs.filter((j) => j.owner === m.id);
+    const byType = {};
+    mine.forEach((j) => { byType[j.jobType] = (byType[j.jobType] || 0) + 1; });
+    const top = Object.entries(byType).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k]) => k);
+    const projects = [...new Set(mine.filter((j) => j.project).map((j) => j.project))];
+    return { m, count: mine.length, top, projects: projects.length };
+  }).sort((a, b) => b.count - a.count);
+
+  return (
+    <div>
+      <SectionTitle eyebrow="Our people" title="Look at our people." sub={`${MEMBERS.length} team members, showing up every day.`} />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px,1fr))", gap: 14 }}>
+        {cards.map(({ m, count, top, projects }) => (
+          <Card key={m.id} onClick={() => openMember(m.id)} style={{ padding: 18, cursor: "pointer" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+              <Avatar member={m} size={38} />
+              <div>
+                <div style={{ fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif" }}>{m.name}</div>
+                <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12.5, color: "#6D4CFF" }}>{count} jobs</div>
+              </div>
+            </div>
+            <div style={{ fontSize: 11, color: "#9A97A8", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6, fontWeight: 600 }}>Top categories</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 10 }}>
+              {top.map((t) => <Sticker key={t} type={t} />)}
+            </div>
+            <div style={{ fontSize: 12, color: "#726F82" }}>{projects} active project{projects !== 1 ? "s" : ""}</div>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MemberView({ id, jobs, back }) {
+  const m = MEMBERS.find((x) => x.id === id);
+  const mine = jobs.filter((j) => j.owner === id);
+  const byType = {};
+  mine.forEach((j) => { byType[j.jobType] = (byType[j.jobType] || 0) + 1; });
+  const maxType = Math.max(1, ...Object.values(byType));
+  const byDay = {};
+  mine.forEach((j) => { byDay[j.date] = (byDay[j.date] || 0) + 1; });
+  const busiest = Object.entries(byDay).sort((a, b) => b[1] - a[1])[0];
+  const topType = Object.entries(byType).sort((a, b) => b[1] - a[1])[0];
+  const projects = [...new Set(mine.filter((j) => j.project).map((j) => j.project))];
+  const recent = [...mine].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 6);
+
+  return (
+    <div>
+      <button onClick={back} style={{ ...btnGhost, marginBottom: 16 }}>‹ Back to team</button>
+      <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 22 }}>
+        <Avatar member={m} size={54} />
+        <div>
+          <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 24 }}>{m.name}'s Job Universe</div>
+          <div style={{ color: "#726F82", fontSize: 13.5 }}>{mine.length} jobs logged · {projects.length} projects touched</div>
+        </div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 20 }}>
+        <Card style={{ padding: 22 }}>
+          <SectionTitle eyebrow="Breakdown" title="Jobs by type" />
+          {Object.entries(byType).sort((a, b) => b[1] - a[1]).map(([type, v]) => (
+            <Bar key={type} label={jt(type).label} value={v} max={maxType} color={jt(type).color} />
+          ))}
+        </Card>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <Card style={{ padding: 18 }}>
+            <div style={{ fontSize: 12, color: "#9A97A8", fontWeight: 600, textTransform: "uppercase" }}>Busiest day</div>
+            <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 20, fontWeight: 700, marginTop: 4 }}>{busiest ? `${busiest[0]} · ${busiest[1]} jobs` : "—"}</div>
+          </Card>
+          <Card style={{ padding: 18 }}>
+            <div style={{ fontSize: 12, color: "#9A97A8", fontWeight: 600, textTransform: "uppercase" }}>Most frequent type</div>
+            <div style={{ marginTop: 8 }}>{topType && <Sticker type={topType[0]} size="lg" />}</div>
+          </Card>
+        </div>
+      </div>
+      <div style={{ marginTop: 20 }}>
+        <SectionTitle eyebrow="Latest" title="Recent jobs" />
+        <Card style={{ padding: 6 }}>
+          {recent.map((j) => (
+            <div key={j.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderBottom: "1px solid #F5F2FB" }}>
+              <div style={{ flex: 1, fontSize: 13.5 }}>{j.title}</div>
+              <Sticker type={j.jobType} />
+              <div style={{ fontSize: 12, color: "#9A97A8", width: 70, textAlign: "right" }}>{j.date.slice(5)}</div>
+            </div>
+          ))}
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------- CALENDAR ---------------------------- */
+function CalendarView({ jobs, openJob }) {
+  const [month, setMonth] = useState(7); // 0-indexed, Aug=7
+  const [memberFilter, setMemberFilter] = useState("all");
+  const [selectedDay, setSelectedDay] = useState(null);
+  const year = 2026;
+  const first = new Date(year, month, 1);
+  const startDow = first.getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < startDow; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  const filteredJobs = memberFilter === "all" ? jobs : jobs.filter((j) => j.owner === memberFilter);
+  const byDay = {};
+  filteredJobs.forEach((j) => { (byDay[j.date] = byDay[j.date] || []).push(j); });
+
+  const dayJobs = selectedDay ? (byDay[selectedDay] || []) : [];
+
+  return (
+    <div>
+      <SectionTitle eyebrow="Day by day" title="Calendar" />
+      <div style={{ display: "flex", gap: 20 }}>
+        <Card style={{ padding: 20, flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+            <button onClick={() => setMonth((m) => Math.max(6, m - 1))} style={iconBtn}>‹</button>
+            <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700 }}>{new Date(year, month, 1).toLocaleString("en-US", { month: "long" })} {year}</div>
+            <button onClick={() => setMonth((m) => Math.min(7, m + 1))} style={iconBtn}>›</button>
+          </div>
+          <select value={memberFilter} onChange={(e) => setMemberFilter(e.target.value)} style={{ ...inp, marginBottom: 14, width: 200 }}>
+            <option value="all">All team members</option>
+            {MEMBERS.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+          </select>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 6 }}>
+            {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => <div key={i} style={{ textAlign: "center", fontSize: 11, color: "#9A97A8", fontWeight: 600 }}>{d}</div>)}
+            {cells.map((d, i) => {
+              if (!d) return <div key={i} />;
+              const iso = `${year}-${pad(month + 1)}-${pad(d)}`;
+              const dj = byDay[iso] || [];
+              const counts = {};
+              dj.forEach((j) => { counts[j.jobType] = (counts[j.jobType] || 0) + 1; });
+              return (
+                <div key={i} onClick={() => setSelectedDay(iso)} style={{ minHeight: 62, borderRadius: 10, padding: 6, cursor: "pointer", background: selectedDay === iso ? "#F1E6FE" : "#FBF7EF", border: selectedDay === iso ? "1px solid #6D4CFF" : "1px solid transparent" }}>
+                  <div style={{ fontSize: 11.5, color: "#726F82", fontWeight: 600 }}>{d}</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 2, marginTop: 4 }}>
+                    {Object.entries(counts).slice(0, 4).map(([t]) => <span key={t} style={{ width: 6, height: 6, borderRadius: 999, background: jt(t).color }} />)}
+                  </div>
+                  {dj.length > 0 && <div style={{ fontSize: 10, color: "#9A97A8", marginTop: 3 }}>{dj.length} jobs</div>}
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+        <Card style={{ padding: 18, width: 300, flexShrink: 0, maxHeight: 480, overflowY: "auto" }}>
+          <div style={{ fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif", marginBottom: 10 }}>{selectedDay || "Pick a day"}</div>
+          {dayJobs.length === 0 && <div style={{ fontSize: 13, color: "#9A97A8" }}>No jobs logged.</div>}
+          {dayJobs.map((j) => {
+            const m = MEMBERS.find((x) => x.id === j.owner);
+            return (
+              <div key={j.id} onClick={() => openJob(j)} style={{ padding: "8px 0", borderBottom: "1px solid #F5F2FB", cursor: "pointer" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                  <Avatar member={m} size={18} /><span style={{ fontSize: 11.5, color: "#726F82" }}>{m.name}</span>
+                </div>
+                <div style={{ fontSize: 13 }}>{j.title}</div>
+                <Sticker type={j.jobType} />
+              </div>
+            );
+          })}
+        </Card>
+      </div>
+    </div>
+  );
+}
+const iconBtn = { border: "1px solid #E4DFF0", background: "#fff", borderRadius: 9, width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" };
+
+/* ---------------------------- PROJECTS ---------------------------- */
+function ProjectsView({ jobs, openProject }) {
+  const cards = PROJECTS.map((p) => {
+    const pj = jobs.filter((j) => j.project === p.id);
+    const people = new Set(pj.map((j) => j.owner)).size;
+    const done = pj.filter((j) => j.status === "done").length;
+    return { p, count: pj.length, people, pct: pj.length ? Math.round((done / pj.length) * 100) : 0 };
+  }).sort((a, b) => b.count - a.count);
+
+  return (
+    <div>
+      <SectionTitle eyebrow="What we're building" title="Projects & Campaigns" />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px,1fr))", gap: 14 }}>
+        {cards.map(({ p, count, people, pct }) => (
+          <Card key={p.id} onClick={() => openProject(p.id)} style={{ padding: 18, cursor: "pointer" }}>
+            <div style={{ fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif", fontSize: 15, marginBottom: 10 }}>{p.name}</div>
+            <div style={{ display: "flex", gap: 16, marginBottom: 10 }}>
+              <div><div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 18, fontWeight: 600 }}>{count}</div><div style={{ fontSize: 11, color: "#9A97A8" }}>jobs</div></div>
+              <div><div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 18, fontWeight: 600 }}>{people}</div><div style={{ fontSize: 11, color: "#9A97A8" }}>people</div></div>
+            </div>
+            <div style={{ background: "#F2EFF9", height: 8, borderRadius: 8, overflow: "hidden" }}>
+              <div style={{ width: `${pct}%`, height: "100%", background: "#1E9E62" }} />
+            </div>
+            <div style={{ fontSize: 11, color: "#9A97A8", marginTop: 5 }}>{pct}% done</div>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+function ProjectView({ id, jobs, back }) {
+  const p = PROJECTS.find((x) => x.id === id);
+  const pj = jobs.filter((j) => j.project === id);
+  const byType = {};
+  pj.forEach((j) => { byType[j.jobType] = (byType[j.jobType] || 0) + 1; });
+  const maxType = Math.max(1, ...Object.values(byType));
+  const people = [...new Set(pj.map((j) => j.owner))];
+  const recent = [...pj].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 8);
+  const dates = pj.map((j) => j.date).sort();
+
+  return (
+    <div>
+      <button onClick={back} style={{ ...btnGhost, marginBottom: 16 }}>‹ Back to projects</button>
+      <SectionTitle eyebrow="Everything we did for this project" title={p.name} sub={dates.length ? `${dates[0]} → ${dates[dates.length - 1]}` : ""} />
+      <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 20 }}>
+        <Card style={{ padding: 22 }}>
+          <SectionTitle eyebrow="Breakdown" title="Jobs by type" />
+          {Object.entries(byType).sort((a, b) => b[1] - a[1]).map(([type, v]) => (
+            <Bar key={type} label={jt(type).label} value={v} max={maxType} color={jt(type).color} />
+          ))}
+        </Card>
+        <Card style={{ padding: 18 }}>
+          <div style={{ fontSize: 12, color: "#9A97A8", fontWeight: 600, textTransform: "uppercase", marginBottom: 10 }}>Who's involved</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {people.map((pid) => {
+              const m = MEMBERS.find((x) => x.id === pid);
+              return <div key={pid} style={{ display: "flex", alignItems: "center", gap: 6, background: "#FBF7EF", padding: "5px 10px", borderRadius: 999 }}><Avatar member={m} size={20} /><span style={{ fontSize: 12.5 }}>{m.name}</span></div>;
+            })}
+          </div>
+        </Card>
+      </div>
+      <div style={{ marginTop: 20 }}>
+        <SectionTitle eyebrow="Latest" title="Recent activity" />
+        <Card style={{ padding: 6 }}>
+          {recent.map((j) => {
+            const m = MEMBERS.find((x) => x.id === j.owner);
+            return (
+              <div key={j.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderBottom: "1px solid #F5F2FB" }}>
+                <Avatar member={m} size={24} />
+                <div style={{ flex: 1, fontSize: 13.5 }}>{j.title}</div>
+                <Sticker type={j.jobType} />
+                <div style={{ fontSize: 12, color: "#9A97A8", width: 70, textAlign: "right" }}>{j.date.slice(5)}</div>
+              </div>
+            );
+          })}
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------- MONTHLY RECAP ---------------------------- */
+const AVAILABLE_MONTHS = ["2026-07", "2026-08"];
+function computeAchievements(jobs) {
+  const perMember = {};
+  MEMBERS.forEach((m) => { perMember[m.id] = jobs.filter((j) => j.owner === m.id); });
+  const most = (fn) => Object.entries(perMember).sort((a, b) => fn(b[1]) - fn(a[1]))[0];
+  const jobMachine = most((js) => js.length);
+  const campaignSlayer = most((js) => js.filter((j) => j.jobType === "campaign").length);
+  const creativeGoblin = most((js) => js.filter((j) => j.jobType === "creative").length);
+  const dataNerd = most((js) => js.filter((j) => j.jobType === "analytics").length);
+  const fireFighter = most((js) => js.filter((j) => j.jobType === "problem").length);
+  const multitasker = most((js) => new Set(js.map((j) => j.jobType)).size);
+  const teamPlayer = most((js) => new Set(js.filter((j) => j.project).map((j) => j.project)).size);
+  const badge = (icon, title, desc, entry, valueFn) => ({ icon, title, desc, name: MEMBERS.find((m) => m.id === entry[0]).name, value: valueFn(entry[1]) });
+  return [
+    badge("🔥", "Job Machine", "Did the most jobs this stretch", jobMachine, (js) => js.length),
+    badge("🎯", "Campaign Slayer", "Most campaign jobs", campaignSlayer, (js) => js.filter((j) => j.jobType === "campaign").length),
+    badge("🎨", "Creative Goblin", "Most creative jobs", creativeGoblin, (js) => js.filter((j) => j.jobType === "creative").length),
+    badge("📊", "Data Nerd", "Most analytics jobs", dataNerd, (js) => js.filter((j) => j.jobType === "analytics").length),
+    badge("🧯", "Fire Fighter", "Most problem-solving jobs", fireFighter, (js) => js.filter((j) => j.jobType === "problem").length),
+    badge("⚡", "The Multitasker", "Touched the most job types", multitasker, (js) => new Set(js.map((j) => j.jobType)).size),
+    badge("🫡", "Team Player", "Worked across the most projects", teamPlayer, (js) => new Set(js.filter((j) => j.project).map((j) => j.project)).size),
+  ];
+}
+
+function RecapView({ jobs }) {
+  const [monthIdx, setMonthIdx] = useState(AVAILABLE_MONTHS.length - 1);
+  const monthKey = AVAILABLE_MONTHS[monthIdx];
+  const monthJobs = jobs.filter((j) => j.date.startsWith(monthKey));
+  const monthLabel = new Date(monthKey + "-01").toLocaleString("en-US", { month: "long", year: "numeric" });
+
+  const byType = {};
+  monthJobs.forEach((j) => { byType[j.jobType] = (byType[j.jobType] || 0) + 1; });
+  const donutSegs = JOB_TYPES.map((t) => ({ label: t.label, color: t.color, value: byType[t.id] || 0 })).filter((s) => s.value > 0);
+  const maxType = Math.max(1, ...Object.values(byType));
+
+  const byDay = {};
+  monthJobs.forEach((j) => { byDay[j.date] = (byDay[j.date] || 0) + 1; });
+  const busiestDays = Object.entries(byDay).sort((a, b) => b[1] - a[1]).slice(0, 3);
+
+  const byMember = {};
+  monthJobs.forEach((j) => { byMember[j.owner] = (byMember[j.owner] || 0) + 1; });
+  const jobMakers = Object.entries(byMember).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+  const achievements = computeAchievements(monthJobs.length ? monthJobs : jobs);
+  const campaignsTouched = new Set(monthJobs.filter((j) => j.jobType === "campaign" && j.project).map((j) => j.project)).size;
+  const weeklyTimeline = useMemo(() => {
+    const weeks = {};
+    monthJobs.forEach((j) => {
+      const d = new Date(j.date);
+      const weekOf = new Date(d); weekOf.setDate(d.getDate() - d.getDay());
+      const key = toISO(weekOf);
+      weeks[key] = weeks[key] || {};
+      weeks[key][j.jobType] = (weeks[key][j.jobType] || 0) + 1;
+    });
+    return Object.entries(weeks).sort();
+  }, [monthJobs]);
+
+  return (
+    <div style={{ background: "#17132A", margin: -28, padding: 28, borderRadius: 20, color: "#fff" }}>
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 14, marginBottom: 8 }}>
+        <button disabled={monthIdx === 0} onClick={() => setMonthIdx((i) => i - 1)} style={{ ...iconBtn, background: "transparent", borderColor: "#3B3560", color: "#fff", opacity: monthIdx === 0 ? 0.3 : 1 }}>‹</button>
+        <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, letterSpacing: 2, color: "#B8B5D1", textTransform: "uppercase" }}>{monthLabel}</div>
+        <button disabled={monthIdx === AVAILABLE_MONTHS.length - 1} onClick={() => setMonthIdx((i) => i + 1)} style={{ ...iconBtn, background: "transparent", borderColor: "#3B3560", color: "#fff", opacity: monthIdx === AVAILABLE_MONTHS.length - 1 ? 0.3 : 1 }}>›</button>
+      </div>
+
+      <div style={{ textAlign: "center", padding: "30px 0 10px" }}>
+        <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 44, fontWeight: 700, background: "linear-gradient(90deg,#6D4CFF,#FF4F81)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>OH MY JOBB!</div>
+        <div style={{ color: "#B8B5D1", marginTop: 6 }}>Look what we've been doing.</div>
+        <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 84, fontWeight: 600, marginTop: 18, lineHeight: 1 }}>{monthJobs.length}</div>
+        <div style={{ letterSpacing: 3, color: "#9A97C0", fontSize: 13, textTransform: "uppercase", marginTop: 4 }}>Jobs</div>
+        <div style={{ marginTop: 14, fontSize: 16, color: "#E4E1F5" }}>We really did all that. 😭</div>
+      </div>
+
+      <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 22, padding: 26, marginTop: 30, display: "flex", gap: 26, alignItems: "center", flexWrap: "wrap" }}>
+        <Donut segments={donutSegs} size={140} />
+        <div style={{ flex: 1, minWidth: 240 }}>
+          <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 17, marginBottom: 12 }}>The Job Universe</div>
+          {JOB_TYPES.filter((t) => byType[t.id]).sort((a, b) => byType[b.id] - byType[a.id]).map((t) => (
+            <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
+              <span style={{ width: 9, height: 9, borderRadius: 999, background: t.color }} />
+              <span style={{ fontSize: 12.5, width: 130, color: "#D7D5E8" }}>{t.label}</span>
+              <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12.5 }}>{byType[t.id]}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18, marginTop: 18 }}>
+        <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 22, padding: 24 }}>
+          <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 17, marginBottom: 12 }}>The Busiest Days</div>
+          {busiestDays.map(([d, c], i) => (
+            <div key={d} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: i < busiestDays.length - 1 ? "1px solid #2C2745" : "none" }}>
+              <span style={{fontSize:14}}>🔥</span>
+              <div style={{ fontSize: 13.5 }}>{new Date(d).toLocaleDateString("en-US", { day: "2-digit", month: "short" })}</div>
+              <div style={{ flex: 1 }} />
+              <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 13.5 }}>{c} jobs</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 22, padding: 24 }}>
+          <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 17, marginBottom: 12 }}>Job Makers</div>
+          {jobMakers.map(([mid, c]) => {
+            const m = MEMBERS.find((x) => x.id === mid);
+            return (
+              <div key={mid} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0" }}>
+                <Avatar member={m} size={26} />
+                <div style={{ fontSize: 13.5, flex: 1 }}>{m.name}</div>
+                <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 13.5, color: "#B8B5D1" }}>{c}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div style={{ marginTop: 18 }}>
+        <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 17, marginBottom: 12 }}>Team Achievements</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(190px,1fr))", gap: 12 }}>
+          {achievements.map((a) => (
+            <div key={a.title} style={{ background: "rgba(255,255,255,0.04)", borderRadius: 16, padding: 16 }}>
+              <div style={{ fontSize: 22 }}>{a.icon}</div>
+              <div style={{ fontWeight: 700, fontSize: 13.5, marginTop: 6 }}>{a.title}</div>
+              <div style={{ fontSize: 11.5, color: "#9A97C0", marginTop: 2 }}>{a.desc}</div>
+              <div style={{ fontSize: 12.5, color: "#FF9EBB", marginTop: 8, fontWeight: 600 }}>{a.name} · {a.value}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ marginTop: 18, background: "rgba(255,255,255,0.04)", borderRadius: 22, padding: 24 }}>
+        <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 17, marginBottom: 14 }}>What Did We Even Do?</div>
+        {weeklyTimeline.map(([weekOf, types]) => {
+          const top = Object.entries(types).sort((a, b) => b[1] - a[1])[0];
+          const total = Object.values(types).reduce((s, v) => s + v, 0);
+          return (
+            <div key={weekOf} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0", borderBottom: "1px solid #2C2745" }}>
+              <div style={{ width: 76, fontSize: 12, color: "#9A97C0" }}>Week of {weekOf.slice(5)}</div>
+              <Sticker type={top[0]} />
+              <div style={{ fontSize: 12, color: "#9A97C0" }}>led the week</div>
+              <div style={{ flex: 1 }} />
+              <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12.5 }}>{total} jobs</div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={{ textAlign: "center", padding: "40px 0 20px" }}>
+        <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 30, fontWeight: 700 }}>GOOD JOBB, TEAM. 🫶</div>
+        <div style={{ color: "#B8B5D1", marginTop: 6, fontSize: 14 }}>Another month survived. Another mountain of work completed.</div>
+        <div style={{ display: "flex", justifyContent: "center", gap: 34, marginTop: 26, flexWrap: "wrap" }}>
+          <div><div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 22, fontWeight: 600 }}>{monthJobs.length}</div><div style={{ fontSize: 11, color: "#9A97C0" }}>Jobs</div></div>
+          <div><div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 22, fontWeight: 600 }}>{MEMBERS.length}</div><div style={{ fontSize: 11, color: "#9A97C0" }}>People</div></div>
+          <div><div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 22, fontWeight: 600 }}>{campaignsTouched}</div><div style={{ fontSize: 11, color: "#9A97C0" }}>Campaigns</div></div>
+          <div><div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 22, fontWeight: 600 }}>∞</div><div style={{ fontSize: 11, color: "#9A97C0" }}>Coffee</div></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------- ANALYTICS ---------------------------- */
+function AnalyticsView({ jobs }) {
+  const byType = {};
+  jobs.forEach((j) => { byType[j.jobType] = (byType[j.jobType] || 0) + 1; });
+  const maxType = Math.max(1, ...Object.values(byType));
+
+  const byWeek = {};
+  jobs.forEach((j) => {
+    const d = new Date(j.date); const weekOf = new Date(d); weekOf.setDate(d.getDate() - d.getDay());
+    const k = toISO(weekOf); byWeek[k] = (byWeek[k] || 0) + 1;
+  });
+  const weeks = Object.entries(byWeek).sort();
+  const maxWeek = Math.max(1, ...weeks.map((w) => w[1]));
+
+  const dowNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const byDow = [0, 0, 0, 0, 0, 0, 0];
+  jobs.forEach((j) => { byDow[new Date(j.date).getDay()]++; });
+  const maxDow = Math.max(1, ...byDow);
+
+  const byProject = {};
+  jobs.forEach((j) => { if (j.project) byProject[j.project] = (byProject[j.project] || 0) + 1; });
+  const topProjects = Object.entries(byProject).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  const maxProject = Math.max(1, ...topProjects.map((p) => p[1]));
+
+  return (
+    <div>
+      <SectionTitle eyebrow="Storytelling, not spreadsheets" title="Analytics" />
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
+        <Card style={{ padding: 22 }}>
+          <SectionTitle title="What kind of work do we do most?" />
+          {JOB_TYPES.filter((t) => byType[t.id]).sort((a, b) => byType[b.id] - byType[a.id]).map((t) => (
+            <Bar key={t.id} label={t.label} value={byType[t.id]} max={maxType} color={t.color} />
+          ))}
+        </Card>
+        <Card style={{ padding: 22 }}>
+          <SectionTitle title="Are we getting busier?" sub="Jobs per week" />
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 150 }}>
+            {weeks.map(([k, v]) => (
+              <div key={k} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                <div style={{ width: "100%", height: `${(v / maxWeek) * 120}px`, background: "linear-gradient(180deg,#6D4CFF,#A98DFF)", borderRadius: "6px 6px 2px 2px" }} title={`${v} jobs`} />
+                <div style={{ fontSize: 9, color: "#9A97A8" }}>{k.slice(8)}</div>
+              </div>
+            ))}
+          </div>
+        </Card>
+        <Card style={{ padding: 22 }}>
+          <SectionTitle title="When do we get crazy?" sub="Jobs by day of week" />
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 130 }}>
+            {byDow.map((v, i) => (
+              <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                <div style={{ width: "100%", height: `${(v / maxDow) * 100}px`, background: i === 0 || i === 6 ? "#E4DFF0" : "#FF4F81", borderRadius: "6px 6px 2px 2px" }} />
+                <div style={{ fontSize: 10, color: "#9A97A8" }}>{dowNames[i]}</div>
+              </div>
+            ))}
+          </div>
+        </Card>
+        <Card style={{ padding: 22 }}>
+          <SectionTitle title="What projects take the most work?" />
+          {topProjects.map(([pid, v]) => (
+            <Bar key={pid} label={PROJECTS.find((p) => p.id === pid).name.slice(0, 18)} value={v} max={maxProject} color="#8B3FE0" />
+          ))}
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------- ACHIEVEMENTS ---------------------------- */
+function AchievementsView({ jobs }) {
+  const achievements = computeAchievements(jobs);
+  return (
+    <div>
+      <SectionTitle eyebrow="Fun stats" title="Achievements" sub="Not a leaderboard. Just vibes and bragging rights." />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(230px,1fr))", gap: 16 }}>
+        {achievements.map((a) => (
+          <Card key={a.title} style={{ padding: 22 }}>
+            <div style={{ fontSize: 32 }}>{a.icon}</div>
+            <div style={{ fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif", fontSize: 16, marginTop: 8 }}>{a.title}</div>
+            <div style={{ fontSize: 12.5, color: "#726F82", marginTop: 3 }}>{a.desc}</div>
+            <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 8 }}>
+              <Avatar member={MEMBERS.find((m) => m.name === a.name)} size={26} />
+              <div style={{ fontWeight: 600, fontSize: 13.5 }}>{a.name}</div>
+              <div style={{ marginLeft: "auto", fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, color: "#6D4CFF" }}>{a.value}</div>
+            </div>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------- APP ---------------------------- */
+function OhMyJobb() {
+  const [jobs, setJobs] = useState(() => generateData());
+  const [view, setView] = useState("home");
+  const [selectedMember, setSelectedMember] = useState(null);
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [modalJob, setModalJob] = useState(undefined); // undefined=closed, null=new, obj=edit
+  const [toast, setToast] = useState("");
+  const todayISO = "2026-08-12";
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(""), 2200);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  const openMember = (id) => { setSelectedMember(id); setView("memberDetail"); };
+  const openProject = (id) => { setSelectedProject(id); setView("projectDetail"); };
+  const handleSearchNav = (kind, id) => { if (kind === "member") openMember(id); else openProject(id); };
+
+  const saveJob = (job) => {
+    if (job.id) {
+      setJobs((js) => js.map((j) => (j.id === job.id ? { ...j, ...job } : j)));
+    } else {
+      setJobs((js) => [{ ...job, id: Math.max(0, ...js.map((j) => j.id)) + 1 }, ...js]);
+    }
+    setModalJob(undefined);
+    setToast(rand(TOAST_MESSAGES));
+  };
+  const deleteJob = (id) => {
+    setJobs((js) => js.filter((j) => j.id !== id));
+    setModalJob(undefined);
+    setToast("Jobb removed.");
+  };
+
+  let content;
+  if (view === "home") content = <HomeView jobs={jobs} openMember={openMember} openProject={openProject} todayISO={todayISO} />;
+  else if (view === "myjobs") content = <MyJobsView jobs={jobs} openJob={setModalJob} todayISO={todayISO} />;
+  else if (view === "team") content = <TeamView jobs={jobs} openMember={openMember} />;
+  else if (view === "memberDetail") content = <MemberView id={selectedMember} jobs={jobs} back={() => setView("team")} />;
+  else if (view === "calendar") content = <CalendarView jobs={jobs} openJob={setModalJob} />;
+  else if (view === "projects") content = <ProjectsView jobs={jobs} openProject={openProject} />;
+  else if (view === "projectDetail") content = <ProjectView id={selectedProject} jobs={jobs} back={() => setView("projects")} />;
+  else if (view === "recap") content = <RecapView jobs={jobs} />;
+  else if (view === "analytics") content = <AnalyticsView jobs={jobs} />;
+  else if (view === "achievements") content = <AchievementsView jobs={jobs} />;
+
+  return (
+    <div style={{ fontFamily: "'Inter',sans-serif", display: "flex", height: "100vh", background: "#FBF7EF", color: "#17132A" }}>
+      <style>{FONT_IMPORT}{`* { box-sizing: border-box; } ::-webkit-scrollbar{width:8px;height:8px;} ::-webkit-scrollbar-thumb{background:#E4DFF0;border-radius:8px;}`}</style>
+      <Sidebar view={view === "memberDetail" ? "team" : view === "projectDetail" ? "projects" : view} setView={(v) => { setView(v); }} />
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <Topbar jobs={jobs} onAdd={() => setModalJob(null)} onSearchNav={handleSearchNav} />
+        <div style={{ flex: 1, overflowY: "auto", padding: 28 }}>{content}</div>
+      </div>
+      {modalJob !== undefined && (
+        <JobModal initial={modalJob} onClose={() => setModalJob(undefined)} onSave={saveJob} onDelete={deleteJob} />
+      )}
+      <Toast text={toast} />
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<OhMyJobb />);
+</script>
+</body>
+</html>
